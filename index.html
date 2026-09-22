@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <!--
@@ -94,7 +95,7 @@
 <meta name="theme-color" content="#000000" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='12'%20fill='%230a0a0f'/%3E%3Ccircle%20cx='32'%20cy='30'%20r='19'%20fill='%2314141c'/%3E%3Cellipse%20cx='24'%20cy='27'%20rx='3.4'%20ry='5.6'%20fill='%23ff2a12'/%3E%3Cellipse%20cx='40'%20cy='27'%20rx='3.4'%20ry='5.6'%20fill='%23ff2a12'/%3E%3Cpath%20d='M22%2044%20Q32%2039%2042%2044'%20stroke='%23ff2a12'%20stroke-width='2.4'%20fill='none'%20stroke-linecap='round'/%3E%3C/svg%3E" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Midnight Curfew" />
 <title>The Midnight Curfew</title>
@@ -351,10 +352,12 @@ body.touch.playing #touch{display:block}
     <button class="mi" id="btnPractice">PRACTICE MODE <small>nothing comes for you &middot; clock frozen</small></button>
     <button class="mi" id="btnSkip">SKIP TO 5 AM <small>jump straight to the hide sequence</small></button>
     <button class="mi" id="btnFreecam">CAMERA MODE <small>free-fly &middot; view the whole flat, no danger</small></button>
+    <button class="mi" id="btnNightmare">NIGHTMARE <small>it hunts faster &middot; nerve breaks sooner</small></button>
     <button class="mi" id="btnStory">STORY</button>
     <button class="mi" id="btnRules">THE FIVE RULES</button>
     <button class="mi" id="btnHow">HOW TO PLAY</button>
     <button class="mi" id="btnRetro">RETRO FILTER <small id="retroState">OFF</small></button>
+    <button class="mi" id="btnPerf">PERFORMANCE MODE <small id="perfState">OFF</small></button>
     <button class="mi" id="btnSound">SOUND <small id="soundState">ON</small></button>
     <button class="mi" id="btnInstall" style="display:none">INSTALL GAME <small>add to your device</small></button>
   </nav>
@@ -630,20 +633,22 @@ $('game').appendChild(renderer.domElement);
 let composer=null, bloomPass=null, gradePass=null;
 
 let retro = false;
+let PERF = localStorage.getItem('mc_perf')==='1';   // low-cost mode for weaker laptops
 const QUALITY = IS_TOUCH ? 0.72 : 1;          // internal resolution scale on phones
+function prCap(){ return Math.min(devicePixelRatio||1, PERF?1:(IS_TOUCH?1.5:1.75)); }
 function resize(){
   if(retro){
     renderer.setPixelRatio(1);
     renderer.setSize(320,240,false);
     camera.aspect = 4/3;
   } else {
-    renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH?1.5:2)*QUALITY);
+    renderer.setPixelRatio(prCap()*QUALITY);
     renderer.setSize(innerWidth,innerHeight,false);
     camera.aspect = innerWidth/innerHeight;
   }
   camera.updateProjectionMatrix();
   if(composer){
-    const pr=Math.min(devicePixelRatio, IS_TOUCH?1.5:2)*QUALITY;
+    const pr=prCap()*QUALITY;
     composer.setPixelRatio(pr);
     composer.setSize(innerWidth,innerHeight);
     if(gradePass) gradePass.uniforms.uRes.value.set(innerWidth,innerHeight);
@@ -903,7 +908,7 @@ const GradeShader = {
 };
 function buildComposer(){
   composer=new EffectComposer(renderer);
-  composer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH?1.5:2)*QUALITY);
+  composer.setPixelRatio(prCap()*QUALITY);
   composer.setSize(innerWidth,innerHeight);
   composer.addPass(new RenderPass(scene,camera));
   bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),
@@ -954,8 +959,76 @@ box(2.8,0.2,14,M.hall,0,-0.1,-12,0,false);
 box(2.8,0.2,14,M.ceil,0,ROOM.h,-12,0,false);
 box(0.2,ROOM.h,14,M.hall,-1.4,ROOM.h/2,-12);
 box(0.2,ROOM.h,14,M.hall, 1.4,ROOM.h/2,-12);
-box(2.8,ROOM.h,0.2,M.hall,0,ROOM.h/2,-19);
 for(let z=-7; z>-18; z-=3.5) box(0.9,1.3,0.05,M.paper,-1.32,1.7,z,Math.PI/2,false);
+
+/* ---- STAIRWELL LANDING: the corridor opens into a tall two-storey well ---- */
+const LAND_HALF=3.6, LAND_Z=-18.6, LAND_END=-26.4, LAND_CY=-22.4;
+const UP_HALF=3.2, UP_END=-31.6, UP_CY=-29.0, UP_FLOOR=3.0, UP_H=6.0, UP_MOUTH=1.5;
+box(7.6,0.2,8.2,M.hall,0,-0.1,LAND_CY,0,false);            // landing floor
+/* low ceiling only over the corridor mouth; the stair well itself is double height */
+box(7.6,0.2,2.6,M.ceil,0,ROOM.h,LAND_Z-1.1,0,false);
+box(7.6,0.2,6.2,M.ceil,0,UP_H,-23.5,0,false);              // high ceiling over the well
+/* side walls run the full double height */
+box(0.2,UP_H,8.2,M.hall,-LAND_HALF-0.1,UP_H/2,LAND_CY);
+box(0.2,UP_H,8.2,M.hall, LAND_HALF+0.1,UP_H/2,LAND_CY);
+/* south wall of the landing, split around the corridor mouth */
+box(2.4,ROOM.h,0.2,M.hall,-2.5,ROOM.h/2,LAND_Z);
+box(2.4,ROOM.h,0.2,M.hall, 2.5,ROOM.h/2,LAND_Z);
+box(2.8,0.7,0.2,M.hall,0,ROOM.h-0.35,LAND_Z);              // lintel over the mouth
+/* north wall: solid below the upper floor (the back of the staircase) ... */
+box(7.6,UP_FLOOR,0.2,M.hall,0,UP_FLOOR/2,LAND_END);
+/* ... and split above it, leaving a doorway at the top of the stairs into the upper room */
+box(7.6/2-UP_MOUTH,UP_H-UP_FLOOR,0.2,M.hall,-(UP_MOUTH+(7.6/2-UP_MOUTH)/2),UP_FLOOR+(UP_H-UP_FLOOR)/2,LAND_END);
+box(7.6/2-UP_MOUTH,UP_H-UP_FLOOR,0.2,M.hall, (UP_MOUTH+(7.6/2-UP_MOUTH)/2),UP_FLOOR+(UP_H-UP_FLOOR)/2,LAND_END);
+box(7.6,0.16,0.06,M.wood,0,0.08,LAND_END+0.16,0,false);    // skirting
+
+/* ---- STAIRCASE climbing to the upper floor (top tread level with UP_FLOOR) ---- */
+const STEPS=12, stepRise=0.25, stepRun=0.31, stepW=3.0, stepZ0=-22.6;
+for(let i=0;i<STEPS;i++){
+  const y=0.125+i*stepRise, z=stepZ0-i*stepRun;
+  box(stepW,0.25,stepRun+0.02,M.wood,0,y,z,0,true);          // tread + riser
+}
+/* stringer walls either side of the stairs */
+box(0.14,3.4,3.8,M.wood,-stepW/2-0.06,1.55,-24.3,0,false);
+box(0.14,3.4,3.8,M.wood, stepW/2+0.06,1.55,-24.3,0,false);
+/* banister posts + rail down one side */
+for(let i=0;i<STEPS;i+=2){
+  const y=0.125+i*stepRise, z=stepZ0-i*stepRun;
+  box(0.06,0.78,0.06,M.wood,stepW/2-0.12,y+0.46,z,0,false);
+}
+
+/* ---- UPPER ROOM at the top of the stairs ---- */
+const UP_DEPTH=LAND_END-UP_END;                              // 5.2
+box(7.2,0.2,UP_DEPTH,M.hall,0,UP_FLOOR-0.1,UP_CY,0,false);   // upper floor slab
+box(7.2,0.2,UP_DEPTH,M.ceil,0,UP_H,UP_CY,0,false);           // upper ceiling
+box(0.2,UP_H-UP_FLOOR,UP_DEPTH,M.hall,-UP_HALF-0.1,(UP_FLOOR+UP_H)/2,UP_CY); // left
+box(0.2,UP_H-UP_FLOOR,UP_DEPTH,M.hall, UP_HALF+0.1,(UP_FLOOR+UP_H)/2,UP_CY); // right
+box(7.2,UP_H-UP_FLOOR,0.2,M.hall,0,(UP_FLOOR+UP_H)/2,UP_END);                 // far north wall
+box(7.2,0.16,0.06,M.wood,0,UP_FLOOR+0.08,UP_END+0.16,0,false);               // skirting
+/* Ada's shoes, still laced, pointing at the wall (lore payoff) */
+box(0.13,0.09,0.30,M.dark,-0.28,UP_FLOOR+0.05,UP_END+0.55,0,false);
+box(0.13,0.09,0.30,M.dark, 0.02,UP_FLOOR+0.05,UP_END+0.55,0,false);
+/* a dead child-sized bedframe against the side wall */
+box(1.9,0.12,0.95,M.wood,-1.9,UP_FLOOR+0.35,UP_CY,0,false);
+box(0.95,0.9,0.06,M.wood,-1.9,UP_FLOOR+0.55,UP_CY-0.42,0,false);
+
+/* dim, sickly upstairs light + the dark glow at the top of the stairs */
+const upLight=new THREE.PointLight(0x7a1f26,0,9,2);
+upLight.position.set(0,UP_FLOOR+2.0,UP_CY); scene.add(upLight);
+const stairVoid=new THREE.PointLight(0x140708,1.4,7,2);
+stairVoid.position.set(0,UP_FLOOR+0.4,LAND_END+0.3); scene.add(stairVoid);
+
+/* landing dressing: a flickering caged lamp registered with the hall lamps later */
+const LAND_LAMP=(()=>{
+  const g=new THREE.Group(); g.position.set(0,ROOM.h-0.18,LAND_CY+1.2); scene.add(g);
+  const glass=new THREE.Mesh(new THREE.SphereGeometry(0.11,10,8),
+    std({color:0xfff0d0,emissive:0xffe0a8,emissiveIntensity:0,roughness:.4}));
+  glass.position.set(0,-0.06,0); g.add(glass);
+  const cage=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.012,6,12),M.metal);
+  cage.position.set(0,-0.06,0); g.add(cage);
+  const L=new THREE.PointLight(0xd8e6ff,0,7,2); L.position.set(0,-0.1,0); g.add(L);
+  return {light:L, glass:glass, flick:Math.random()*9};
+})();
 
 /* furniture */
 box(3.0,0.9,0.85,M.wood,-3.2,0.45,3.35);
@@ -1193,12 +1266,13 @@ const hallLamps=[];
   const L=new THREE.PointLight(0xd8e6ff,0,7,2); L.position.set(0,-0.1,0); g.add(L);
   hallLamps.push({light:L, glass:g.children[0], flick:Math.random()*9});
 });
+hallLamps.push(LAND_LAMP);
 box(2.2,0.02,12,std({map:rugTex,roughness:1}),0,0.012,-12,0,false);
-box(0.9,0.06,0.4,M.wood,0,0.78,-18.6,0,false);
-for(const x of [-0.4,0.4]) box(0.06,0.78,0.06,M.wood,x,0.39,-18.6,0,false);
-tag(box(0.16,0.3,0.16,std({color:0x3e4a52,roughness:.6}),0,0.95,-18.6,0,false),
+box(0.9,0.06,0.4,M.wood,2.7,0.78,-24.5,0,false);
+for(const x of [2.3,3.1]) box(0.06,0.78,0.06,M.wood,x,0.39,-24.5,0,false);
+tag(box(0.16,0.3,0.16,std({color:0x3e4a52,roughness:.6}),2.7,0.95,-24.5,0,false),
     'vase','Press [E] to Look at the Vase');
-blk(0,-18.6,0.5,0.25);
+blk(2.7,-24.5,0.5,0.25);
 
 /* --- door numbers on the locked hallway doors --- */
 const numTex=t=>canvasTex(64,64,(c,w,h)=>{
@@ -1211,6 +1285,26 @@ const numTex=t=>canvasTex(64,64,(c,w,h)=>{
   const plate=mesh(B(0.16,0.16,0.02),std({map:numTex(n),roughness:.9}),-0.36,1.62,0.06);
   d.group.add(plate);
 });
+
+/* --- JUMPSCARE: a pale thing waits at the top of the stairwell --- */
+const scare=new THREE.Group();
+scare.position.set(0,UP_FLOOR+1.5,LAND_END-0.3); scare.visible=false; scene.add(scare);
+const scareHead=mesh(new THREE.SphereGeometry(0.55,18,16),
+  std({color:0xd9d2c2,roughness:.85,emissive:0x120404,emissiveIntensity:.4}),0,0,0);
+scareHead.scale.set(0.92,1.18,0.9); scare.add(scareHead);
+scare.add(mesh(new THREE.SphereGeometry(0.14,10,8),M.dark,-0.2,0.1,0.44));   // eye socket L
+scare.add(mesh(new THREE.SphereGeometry(0.14,10,8),M.dark, 0.2,0.1,0.44));   // eye socket R
+scare.add(mesh(new THREE.SphereGeometry(0.07,8,6),
+  std({color:0xff3018,emissive:0xff2a10,emissiveIntensity:3,roughness:.4}),-0.2,0.1,0.52)); // pupil L
+scare.add(mesh(new THREE.SphereGeometry(0.07,8,6),
+  std({color:0xff3018,emissive:0xff2a10,emissiveIntensity:3,roughness:.4}), 0.2,0.1,0.52)); // pupil R
+scare.add(mesh(B(0.42,0.34,0.12),M.dark,0,-0.32,0.46));                      // gaping mouth
+for(let i=0;i<5;i++){                                                        // teeth
+  scare.add(mesh(B(0.05,0.12,0.03),std({color:0xcfc7b2,roughness:.6}),-0.16+i*0.08,-0.24,0.53));
+}
+const scareLight=new THREE.PointLight(0xff2a12,0,6,2); scareLight.position.set(0,0.1,0.5);
+scare.add(scareLight);
+
 
 /* =========================================================
    6c. HOUSE DRESSING v4  -  a more lived-in flat
@@ -1497,6 +1591,8 @@ const SFX={
   doorOpen:()=>sfxNoise(0.7,300,0.4,'lowpass'),
   creak:()=>sfxTone(320,0.9,'sawtooth',0.05,120),
   hit:()=>{ sfxNoise(0.5,120,0.9,'lowpass'); sfxTone(70,0.8,'sine',0.4,40); },
+  screech:()=>{ sfxNoise(0.9,2400,0.8,'highpass'); sfxTone(1600,0.7,'sawtooth',0.3,-900);
+                sfxNoise(0.6,180,0.9,'lowpass'); },
   win:()=>{ [392,523,659].forEach((f,i)=>setTimeout(()=>sfxTone(f,0.7,'triangle',0.18),i*220)); }
 };
 function setSound(on){
@@ -1522,6 +1618,7 @@ const S={ mode:'menu', overlay:null, flashOn:false, battery:100, nerve:100, minu
   /* ---- night list (chores) + cupboard latch ---- */
   chores:{}, plateDirty:false, curtainOpen:true, bolted:false,
   latched:false, rattle:0, rattleAt:0, tried:false,
+  scareActive:false, scareDone:false, scareT:0, hard:false, upSeen:false,
   practice:false, freecam:false };
 const MIN_PER_SEC=2/30;      // 30 real seconds = 2 minutes on the clock
 const DAWN=420;              // 6:00 AM
@@ -1618,6 +1715,7 @@ $('btnStart').onclick=()=>{ SFX.click(); audioInit(); startNight(false); };
 $('btnPractice').onclick=()=>{ SFX.click(); audioInit(); startNight(true); };
 $('btnSkip').onclick=()=>{ SFX.click(); audioInit(); startNight(false,true); };
 $('btnFreecam').onclick=()=>{ SFX.click(); audioInit(); startFreecam(); };
+$('btnNightmare').onclick=()=>{ SFX.click(); audioInit(); startNight(false,false,true); };
 $('btnStory').onclick=()=>{ SFX.click(); showPanel('pStory'); };
 $('btnRules').onclick=()=>{ SFX.click(); showPanel('pRules'); };
 $('btnHow').onclick  =()=>{ SFX.click(); showPanel('pHow'); };
@@ -1625,6 +1723,26 @@ $('btnRetro').onclick=()=>{ SFX.click(); retro=!retro;
   document.body.classList.toggle('retro',retro);
   $('retroState').textContent=retro?'ON':'OFF'; resize(); };
 $('btnSound').onclick=()=>{ audioInit(); setSound(!A.on); SFX.click(); };
+
+/* ---- PERFORMANCE MODE: drop bloom, shadow cost + pixel ratio for weak laptops ---- */
+function applyPerf(announce){
+  localStorage.setItem('mc_perf', PERF?'1':'0');
+  if($('perfState')) $('perfState').textContent = PERF?'ON':'OFF';
+  /* cheaper shadows */
+  renderer.shadowMap.type = PERF ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+  const sz = PERF ? 1024 : (IS_TOUCH?512:2048);
+  [bulb,moon].forEach(L=>{ if(L&&L.shadow){ L.shadow.mapSize.set(sz,sz);
+    if(L.shadow.map){ L.shadow.map.dispose(); L.shadow.map=null; } } });
+  /* the moon + flashlight shadows are the most expensive - drop them in perf mode */
+  if(moon) moon.castShadow = !PERF;
+  if(!IS_TOUCH && flashlight) flashlight.castShadow = !PERF;
+  renderer.shadowMap.needsUpdate = true;
+  resize();                                     // re-apply pixel-ratio cap
+  if(announce && S.mode==='play') objective(PERF?'Performance mode ON - smoother, fewer effects.'
+                                                :'Performance mode OFF.');
+}
+$('btnPerf').onclick=()=>{ SFX.click(); PERF=!PERF; applyPerf(true); };
+applyPerf(false);
 
 /* ---- PWA install button (shown once the browser offers a prompt) ---- */
 if(window.__installEvt) $('btnInstall').style.display='';
@@ -1680,8 +1798,8 @@ function hidePanel(){
   $(S.overlay).style.display='none'; S.overlay=null;
   if(S.mode==='play'&&!IS_TOUCH) controls.lock();
 }
-function startNight(practice,skip){
-  S.practice=!!practice; S.freecam=false;
+function startNight(practice,skip,hard){
+  S.practice=!!practice; S.freecam=false; S.hard=!!hard;
   S.power=true; powerBack();
   S.minutes=0; S.timeCap=S.practice?0:4;      // 11:00 PM, stops at 11:04
   S.usedLight=false; S.knockDoor=null; S.knockN=0; S.dawnHide=0;
@@ -1692,10 +1810,15 @@ function startNight(practice,skip){
   S.chores={}; S.plateDirty=false; S.curtainOpen=true; S.bolted=false;
   S.latched=false; S.tried=false; S.rattle=0; showChores(false);
   doorPivot.rotation.y=0;
+  S.scareActive=false; S.scareDone=false; S.scareT=0;
+  scare.visible=false; scareLight.intensity=0;
+  S.upSeen=false;
   mwGlass.material.emissiveIntensity=0; mwLight.intensity=0;
   hidePanel(); enterPlay();
   objective(S.practice?'PRACTICE - explore. Nothing comes tonight.'
-                      :'Read the rules on the fridge');
+                      :(S.hard?'NIGHTMARE - read the rules. It already knows you are here.'
+                              :'Read the rules on the fridge'));
+  if(S.hard) say('NIGHTMARE. It hunts faster tonight, and your nerve breaks sooner. Do not look.',5600);
   if(skip){
     say('Skipping ahead to 5:00 AM\u2026',2600);
     fallAsleep();
@@ -1724,12 +1847,13 @@ function startNight(practice,skip){
    9b. FREE CAMERA MODE  (spectator fly-through, no danger)
 ========================================================= */
 function startFreecam(){
-  S.freecam=true; S.practice=false;
+  S.freecam=true; S.practice=false; S.hard=false;
   S.power=true; powerBack();
   S.frontOpen=true; S.hallLightOn=true; S.tvOn=true; S.curtainOpen=true;
   S.hiding=false; S.sitting=false; S.carrying=false; S.knocking=false;
   S.stage='freecam'; S.timeCap=null; S.minutes=0;
   S.nerve=100; S.battery=100;
+  S.scareActive=false; S.scareDone=false; S.scareT=0; S.upSeen=false;
   entity.visible=false; entityEyes.intensity=0;
   devRoom.visible=false; S.dev=false;
   showChores(false);
@@ -2308,6 +2432,16 @@ function solid(x,z){
     if(Math.abs(x-b.x)<b.hw+RAD && Math.abs(z-b.z)<b.hd+RAD) return true;
   return false;
 }
+
+/* floor height under a point: 0 in the flat, rising up the stair treads to the upper room */
+function groundAt(x,z){
+  if(Math.abs(x) < UP_HALF+0.1 && z <= LAND_END+0.1 && z >= UP_END-0.3) return UP_FLOOR;   // upper room
+  if(Math.abs(x) < stepW/2+0.1 && z <= stepZ0+0.2 && z >= LAND_END-0.3){                    // staircase ramp
+    const climb = THREE.MathUtils.clamp((stepZ0 - z)/stepRun, 0, STEPS) * stepRise;
+    return Math.min(UP_FLOOR, 0.125 + climb);
+  }
+  return 0;
+}
 function move(dt){
   if(S.freecam){ freeMove(dt); return; }
   if(S.mode!=='play'||S.overlay||S.hiding||S.sitting){ return; }
@@ -2334,20 +2468,28 @@ function move(dt){
 
     /* two zones: the kitchen box and the hallway corridor.
        The north wall can only be crossed through the doorway gap (|x| < 1.4). */
-    const HALL_HALF = 1.4, HALL_END = -18.6, THRESH = -ROOM.d/2;
-    const inHallNow = p.z < THRESH;
+    const HALL_HALF = 1.4, THRESH = -ROOM.d/2;
     if(S.dev){
       p.x = THREE.MathUtils.clamp(nx, DEV.x-DEV.hw+RAD, DEV.x+DEV.hw-RAD);
       p.z = THREE.MathUtils.clamp(nz, DEV.z-DEV.hd+RAD, DEV.z+DEV.hd-RAD);
     } else {
-      /* the hallway is outside the flat: you can only cross the open front door */
-      const gapOK = S.frontOpen && nx>DOOR_GAP[0]+RAD && nx<DOOR_GAP[1]-RAD;
-      if(inHallNow){
+      /* zones: the flat, the corridor, the stairwell landing, and the upper room */
+      const gapOK  = S.frontOpen && nx>DOOR_GAP[0]+RAD && nx<DOOR_GAP[1]-RAD;
+      const landGap = nx>-HALL_HALF+RAD && nx<HALL_HALF-RAD;
+      const inMouth = Math.abs(nx) < UP_MOUTH-RAD;                 // the doorway at the stair top
+      if(p.z < LAND_END){                       // upper room (top of the stairs)
+        p.x = THREE.MathUtils.clamp(nx, -UP_HALF+RAD, UP_HALF-RAD);
+        p.z = THREE.MathUtils.clamp(nz, UP_END+RAD, inMouth ? LAND_Z-RAD : LAND_END-RAD);
+      } else if(p.z < LAND_Z){                   // stairwell landing + staircase
+        p.x = THREE.MathUtils.clamp(nx, -LAND_HALF+RAD, LAND_HALF-RAD);
+        const upOK = inMouth && groundAt(nx,nz) > UP_FLOOR-0.35;   // only pass north once at the top
+        p.z = THREE.MathUtils.clamp(nz, upOK ? UP_END+RAD : LAND_END+RAD, landGap ? THRESH-RAD : LAND_Z-RAD);
+      } else if(p.z < THRESH){                   // communal corridor
         p.x = THREE.MathUtils.clamp(nx, -HALL_HALF+RAD, HALL_HALF-RAD);
-        p.z = THREE.MathUtils.clamp(nz, HALL_END+RAD, gapOK ? ROOM.d/2-RAD : THRESH-RAD);
-      } else {
+        p.z = THREE.MathUtils.clamp(nz, LAND_END+RAD, gapOK ? ROOM.d/2-RAD : THRESH-RAD);
+      } else {                                  // the flat
         p.x = THREE.MathUtils.clamp(nx, -ROOM.w/2+RAD, ROOM.w/2-RAD);
-        p.z = THREE.MathUtils.clamp(nz, gapOK ? HALL_END+RAD : THRESH+RAD, ROOM.d/2-RAD);
+        p.z = THREE.MathUtils.clamp(nz, gapOK ? LAND_END+RAD : THRESH+RAD, ROOM.d/2-RAD);
       }
     }
 
@@ -2363,8 +2505,9 @@ function move(dt){
     bob+=dt*(running?13:9);
     if(Math.floor(bob/Math.PI)!==prevStep) sfxNoise(0.09,900,0.1,'bandpass');   // one tap per step
   }
-  $('state').textContent = p.z<-ROOM.d/2 ? 'hallway' : 'kitchen';
-  p.y = 1.55 + Math.sin(bob)*0.035 + Math.sin(breathe*1.7)*0.012 + S.knockShake*Math.random()*0.02;
+  $('state').textContent = p.z<LAND_END ? 'upstairs' : (p.z<LAND_Z ? 'stairwell' : (p.z<-ROOM.d/2 ? 'hallway' : 'kitchen'));
+  const gy = groundAt(p.x,p.z);
+  p.y = gy + 1.55 + Math.sin(bob)*0.035 + Math.sin(breathe*1.7)*0.012 + S.knockShake*Math.random()*0.02;
 }
 
 /* flashlight sways behind the look direction (inertia) */
@@ -2755,9 +2898,10 @@ function updateEntity(dt,t){
     const staring = lookDir.z<-0.55 && camera.position.z<2.0;
     if(staring){
       walking=true;
-      entity.position.z += dt*1.5;                  // it closes in while watched
+      const hd=S.hard?1.75:1;
+      entity.position.z += dt*1.5*hd;                  // it closes in while watched
       entity.position.x += (0-entity.position.x)*dt*2;
-      S.nerve=Math.max(0,S.nerve-dt*15);
+      S.nerve=Math.max(0,S.nerve-dt*15*hd);
       if(Math.random()<dt*1.5) SFX.whisper();
       if(entity.position.z>-9&&Math.random()<dt*0.6)
         say('It has not moved its feet. It is just closer.',2600);
@@ -2769,6 +2913,53 @@ function updateEntity(dt,t){
     }
   } else if(calm) S.nerve=Math.min(100,S.nerve+dt*6);
   animateEntity(t,walking);
+}
+
+/* =========================================================
+   15b. STAIRWELL JUMPSCARE
+========================================================= */
+function triggerScare(){
+  S.scareActive=true; S.scareDone=true; S.scareT=0;
+  scare.visible=true;
+  scare.position.set(0,UP_FLOOR+1.5,LAND_END-0.3);
+  vFlash(); SFX.screech(); S.knockShake=1.6;
+  say('SOMETHING COMES DOWN THE STAIRS.',2600);
+  if(!S.freecam && !S.practice){ $('vblood').style.opacity='0.9'; nerveHit(38); }
+}
+function updateScare(dt,t){
+  const canRun = (S.mode==='play' || S.freecam);
+  /* fade the sickly upstairs glow in as the player approaches the well */
+  const near = camera.position.z < -19.0;
+  upLight.intensity += ((near?2.2:0)-upLight.intensity)*Math.min(1,dt*3);
+  if((S.mode==='play'||S.freecam) && camera.position.z < LAND_END && !S.upSeen){
+    S.upSeen=true;
+    say('The upstairs flat. Empty for two weeks. Ada\u2019s shoes are still by the far wall, still laced.',5200);
+  }
+  if(canRun && !S.scareDone && !S.scareActive){
+    const climbing = groundAt(camera.position.x,camera.position.z) > 0.4;
+    const onStair  = camera.position.z < -22.0 && Math.abs(camera.position.x) < 2.4;
+    if(climbing || onStair) triggerScare();
+  }
+  if(S.scareActive){
+    S.scareT += dt;
+    const k = Math.min(1, S.scareT/0.55);
+    const startZ = LAND_END-0.3, startY = UP_FLOOR+1.5;
+    /* lunge down the stairs into the player's face */
+    const tz = camera.position.z + 1.1;
+    scare.position.z = startZ + k*(tz-startZ);
+    scare.position.x += (camera.position.x-scare.position.x)*Math.min(1,dt*9);
+    scare.position.y = startY - k*(startY-camera.position.y-0.05);
+    scare.lookAt(camera.position.x,camera.position.y,camera.position.z);
+    scare.rotation.z = Math.sin(t*34)*0.12;
+    scareLight.intensity = 5+Math.sin(t*42)*3;
+    if(S.scareT>1.15){
+      S.scareActive=false;
+      scare.visible=false; scareLight.intensity=0;
+      if(!S.freecam) $('vblood').style.opacity=String(Math.max(0,(45-S.nerve)/45*0.8));
+    }
+  } else {
+    scare.visible=false; scareLight.intensity=0;
+  }
 }
 
 /* =========================================================
@@ -2865,6 +3056,7 @@ function menuCamera(t){
    17. LOOP
 ========================================================= */
 const clock=new THREE.Clock();
+const perfProbe={frames:0,time:0,done:PERF};   // auto-detect slow hardware
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(0.05,clock.getDelta()), t=clock.elapsedTime;
@@ -2876,11 +3068,20 @@ function animate(){
   updateFocus();
   updateMeters(dt);
   updateEntity(dt,t);
+  updateScare(dt,t);
   animateProps(dt,t);
   updateAtmosphere(dt,t);
   if(A.humGain) A.humGain.gain.value = 0.05/(1+camera.position.distanceTo(fridge.position)*0.25);
   document.querySelectorAll('.hands').forEach(h=>h.classList.toggle('show',S.carrying&&S.mode==='play'&&!S.sitting));
-  if(!retro && composer){
+  /* adaptive: if the first few seconds run slow, switch to performance mode once */
+  if(!PERF && !perfProbe.done){
+    perfProbe.frames++; perfProbe.time+=dt;
+    if(perfProbe.time>=3){
+      perfProbe.done=true;
+      if(perfProbe.frames/perfProbe.time < 40){ PERF=true; applyPerf(true); }
+    }
+  }
+  if(!retro && !PERF && composer){
     if(gradePass){
       gradePass.uniforms.uTime.value=t;
       const fear = (S.mode==='play')? Math.max(0,(55-S.nerve)/55) : 0;
